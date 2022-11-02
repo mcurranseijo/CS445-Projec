@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Keegans Dev Corner</title>
+    <link href="keegan_design.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.13.0/css/all.css">
+    <link rel="icon" href="favicon.ico">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+
+    <link rel="stylesheet"
+      href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/styles/default.min.css">
+    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script>
+    <script>hljs.highlightAll();</script>
+
+    <script src="script.js"></script>
+
+    
+
+    <meta content="Keegan's Developer Corner" property="og:title">
+    <meta content="Portfolio site for my development projects" property="og:description">
+    <meta content='/images/favicon.png' property='og:image'>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+
+        <header>
+            <a class="logo" href="#home">
+                <img src="./images/header-logo.PNG" alt="my logo" />
+            </a>
+            <nav>
+                <ul class="nav-bar">
+                    <div class="bg"></div>
+                    <li><a class="nav-link" href="#home">Home</a></li>
+                    <li><a class="nav-link" href="#projects">Projects</a></li>
+                    <li><a class="nav-link" href="#contact">Contact</a></li>
+                    <li><a class="nav-link" href="https://dnd.kbots.tech/" target="_blank">DnD Site</a></li>
+                    <li><a class="nav-link" href="https://panel.kbots.tech/" target="_blank">Panel</a></li>
+                </ul>
+
+                <div class="hamburger">
+                    <div class="line1"></div>
+                    <div class="line2"></div>
+                    <div class="line3"></div>
+                </div>
+            </nav>
+        </header>
+        <main>
+        
+            <div>
+                <div style="display:none" id="words">
+                    import asyncio
+                    import json
+                    import random
+                    from datetime import datetime
+                    
+                    from interactions import ComponentContext, autodefer
+                    
+                    from cah import Player, Deck, Game
+                    
+                    import interactions
+                    
+                    class TestCommand(interactions.Extension):
+                        def __init__(self, client):
+                            self.client: interactions.Client = client
+                            
+                            self. games = {}
+                    
+                    
+                        @interactions.extension_command(name="newgame", description="Start a new game of Cards Against Humanity")
+                        @autodefer()
+                        async def test_command(self, ctx):
+                            winState = 10
+                    
+                            stringpacks = json.load(open("cah-cards-full.json", encoding="UTF-8"))
+                            gameTime = str(datetime.now())
+                            selectedpacks = ['CAH Base Set']
+                            players = [Player(ctx.author.name, ctx.author.id)]
+                            replies = [ctx]
+                            strikes = 0
+                    
+                            def packCheck(interaction):
+                                return interaction.channel.id == ctx.channel.id and \
+                                       str(ctx.author.id) in interaction.custom_id and \
+                                       gameTime in interaction.custom_id
+                    
+                            def gameCheck(interaction):
+                                return interaction.channel.id == ctx.channel.id and \
+                                       str(ctx.author.id) in interaction.custom_id and \
+                                       gameTime in interaction.custom_id
+                    
+                            cards = Deck(stringpacks).listpacks()
+                            packs = []
+                    
+                            options1 = []
+                            options2 = []
+                            options3 = []
+                            for count, card in enumerate(cards):
+                                option = interactions.SelectOption(
+                                    label=card[:79],
+                                    value=card[:79]
+                                )
+                    
+                    
+                    
+                                if count < 25:
+                                    options1.append(option)
+                                elif count <50:
+                                    options2.append(option)
+                                else:
+                                    options3.append(option)
+                    
+                    
+                            packs.append(
+                                interactions.ActionRow(
+                                    components=[
+                                        interactions.SelectMenu(
+                                        options=options1,
+                                        placeholder="Base - CAH: Sixth Expansion",
+                                        custom_id=f"options1-{gameTime}-{ctx.author.id}",
+                                        )
+                                    ]
+                                )
+                            )
+                            packs.append(interactions.ActionRow(
+                                    components=[interactions.SelectMenu(
+                                options=options2,
+                                placeholder="CAH: The First Expansion - PAX Prime 2014 Custom Printed Cards",
+                                custom_id=f"options2{gameTime}-{ctx.author.id}",
+                            )]))
+                            packs.append(interactions.ActionRow(
+                                    components=[interactions.SelectMenu(
+                                options=options3,
+                                placeholder="PAX Prime 2015 Food Pack A - World Wide Web Pack",
+                                custom_id=f"options3{gameTime}-{ctx.author.id}",
+                            )]))
+                            packs.append(
+                                interactions.ActionRow(
+                                    components=[interactions.Button(
+                                        style=interactions.ButtonStyle.PRIMARY,
+                                        label="Start Game",
+                                        custom_id=f"ready-{ctx.author.id}-{gameTime}"
+                                    )])
+                            )
+                    
+                            packEmbed = interactions.Embed(
+                                title="Select Packs",
+                                description="Select the packs you want to play with\nGame host: " + ctx.author.mention,
+                                color=0x00ff00
+                            )
+                    
+                            packEmbed.add_field(name="Packs", value=", ".join(selectedpacks), inline=False)
+                    
+                            await ctx.send(embeds=packEmbed, components=packs)
+                    
+                            while True:
+                                try:
+                                    button_ctx: ComponentContext = await self.client.wait_for_component(
+                                        components=packs, check=packCheck, timeout=300
+                                    )
+                    
+                                    if(button_ctx.custom_id == f"ready-{ctx.author.id}-{gameTime}" and button_ctx.author.id == ctx.author.id):
+                                        await button_ctx.edit(embeds=packEmbed, components=[])
+                                        break
+                                    elif button_ctx.author.id == ctx.author.id:
+                    
+                                        pack = button_ctx.data.values[0]
+                    
+                                        if pack == "CAH: Hidden Gems Bundle: A Few New Cards We Crammed Into This Bundle Pack (Amaz":
+                                            pack = "CAH: Hidden Gems Bundle: A Few New Cards We Crammed Into This Bundle Pack (Amazon Exclusive)"
+                                        packEmbed.clear_fields()
+                                        if pack not in selectedpacks:
+                                            selectedpacks.append(pack)
+                                            packEmbed.add_field(name="Added Pack",value=pack,inline=False)
+                                        else:
+                                            selectedpacks.remove(pack)
+                                            packEmbed.add_field(name="Removed Pack",value=pack,inline=False)
+                    
+                                        packEmbed.add_field(name="Packs", value="\n".join(selectedpacks), inline=False)
+                                        await button_ctx.edit(embeds=packEmbed, components=packs)
+                                    else:
+                                        await button_ctx.send("You can't do that", ephemeral=True)
+                    
+                                except asyncio.TimeoutError:
+                                    break
+                    
+                            startButtons = interactions.ActionRow(components=[
+                                interactions.Button(
+                                    style=interactions.ButtonStyle.PRIMARY,
+                                    label="Join Game! (Press again to leave)",
+                                    custom_id=f"join_game-{ctx.author.id}-{gameTime}"
+                                ),
+                                interactions.Button(
+                                    style=interactions.ButtonStyle.PRIMARY,
+                                    label="Start Game!",
+                                    custom_id=f"start_game-{ctx.author.id}-{gameTime}"
+                                )]
+                            )
+                    
+                            startEmbed = interactions.Embed(
+                                title="Game Lobby, click below to join!",
+                                description="Game host: " + ctx.author.mention,
+                                color=0x00ff00
+                                )
+                            startEmbed.add_field(name="Players", value="\n ".join([player.name for player in players]), inline=True)
+                            startEmbed.add_field(name="Packs", value="\n ".join(selectedpacks), inline=True)
+                            startMessage = await ctx.send(embeds=startEmbed, components=startButtons)
+                    
+                    
+                    
+                            while True:
+                                try:
+                                    button_ctx: ComponentContext = await self.client.wait_for_component(
+                                        components=startButtons, check=gameCheck, timeout=30
+                                    )
+                    
+                                    if "join_game" in button_ctx.custom_id:
+                                        if button_ctx.author.id not in [player.id for player in players]:
+                                            players.append(Player(button_ctx.author.name, button_ctx.author.id))
+                    
+                                            replies.append(button_ctx)
+                    
+                                            startEmbed.clear_fields()
+                                            startEmbed.add_field(name="Players", value="\n ".join([player.name for player in players]),
+                                                                 inline=True)
+                                            startEmbed.add_field(name="Packs", value="\n ".join(selectedpacks), inline=True)
+                                            await button_ctx.edit(embeds=startEmbed, components=startButtons)
+                    
+                                            await button_ctx.send("You have joined the game. It will start soon.", ephemeral=True)
+                                        else:
+                                            if button_ctx.author.id == ctx.author.id:
+                                                await button_ctx.send("You can't leave the game, your the host.", ephemeral=True)
+                                            else:
+                                                await button_ctx.send("You have left the game.", ephemeral=True)
+                                                for player in players:
+                                                    if player.id == button_ctx.author.id:
+                                                        players.remove(player)
+                                                        break
+                                                for reply in replies:
+                                                    if reply.author.id == button_ctx.author.id:
+                                                        replies.remove(reply)
+                                                startEmbed.clear_fields()
+                                                startEmbed.add_field(name="Players", value="\n ".join([player.name for player in players]),
+                                                                     inline=True)
+                                                startEmbed.add_field(name="Packs", value="\n ".join(selectedpacks), inline=True)
+                                                await startMessage.edit(embeds=startEmbed, components=startButtons)
+                                    elif button_ctx.custom_id == f"start_game-{ctx.author.id}-{gameTime}" and button_ctx.author.id == ctx.author.id:
+                                        await button_ctx.edit()
+                                        break
+                                except asyncio.TimeoutError:
+                                    break
+                            
+                            startEmbed.title = "Game Starting, /newgame to start a new game"
+                            await startMessage.edit(embeds=startEmbed, components=[])
+                    
+                            gameMessage = await ctx.send("Game starting, please wait...")
+                    
+                            if len(players) == 1:
+                                await gameMessage.edit(embeds=interactions.Embed(
+                                    title="Game Over",
+                                    description="You need at least 3 players to play",
+                                    color=0xff0000)
+                                )
+                                return
+                    
+                            game = Game(players, stringpacks, selectedpacks)</div>
+        
+                            <pre><code class="language-python" id="screen">
+                </code></pre>
+                <script>
+                    type(0, 5, "words", "screen");
+                </script>
+            </div>
+            <div id="home">
+                <div class="filter"></div>
+                <section class="intro">
+                    <h3>KEEGAN
+                        <hr>
+                    </h3>
+                    <p>Python and Java Developer</p>
+
+
+
+                    <div class="social-media">
+                        <a href="https://github.com/mcurranseijo" target="_blank"><i class='fab fa-github'></i></a>
+                        <a href="https://www.linkedin.com/in/mckeegan/" target="_blank"><i
+                                class='fab fa-linkedin-in'></i></a>
+                    </div>
+                    <div class="card-small card-resume">
+                        <a href="/resume.pdf" target="_blank">
+       
+                            <div class="work-content">Resume Link</div>
+                        </a>
+                    </div>
+
+                </section>
+            </div>
+
+            <div id="about">
+                <h3>About Me
+                    <hr>
+                </h3>
+                <p style="padding-right: 20%; padding-left: 20%; text-align: left;">Hi, I'm Keegan. I primaly use Python and C/C++ for my development projects but work with PHP and Javascript for web projects as well. I am minoring in cybersecurity and going into a red team side internship next summer with Caterpillar to expand those skills. I look to expand my cybersecurity knowledge over time and follow the field in the direction of white hacking, looking to find exploits look to fix them rather than take aadvantage of them.</p>
+                <p style="padding-right: 20%; padding-left: 20%; text-align: left;">Outside of development projects I have a passion for 3d printing and design that I use in both my Model Railroading and Smart Home projects using a standard Ender 3, A belt printer and small resin printer for more detailed parts. </p> 
+                <p style="padding-right: 20%; padding-left: 20%; text-align: left;">On Campus I am involved in my Fraternity Phi Gamma delta as the Corresponding Secretary and an advisor for the D&D club. In previous years I also led a Raspberry Pi workshop and helped setup the Barton Makerspace on campus.</p> 
+                </p>
+                <h3>Goals
+                    <hr>
+                </h3>
+                <p style="padding-right: 20%; padding-left: 20%; text-align: left;">I plan on continuing my career with Caterpillar going into more cybersecurity and pen testing as my career progresses. Once time allows I plan on working on my homelab more and putting my 4 node server to good use. For more info on my skills and accomplishments check my resume linked above.</p>
+            </div>
+
+
+            <div id="projects">
+                <h3>My Projects
+                    <hr>
+                </h3>
+                <p>Some of my most recent projects, current goal finding the craziest API's to make insane outside the
+                    box projects to make life... 'easier'</p>
+                <div>
+             
+                    <div class="work-box">
+                        <div class="work">
+                            <div>
+                                <div class="card">
+                                    <img class="work-img" src="./images/d&dbot.png">
+                                    <a href="https://github.com/mcurranseijo/Dungeons-and-Dragons-Bot" target="_blank">
+                                
+                                        <div class="work-content">D&D Discord Bot <br>Code</div>
+                                    </a>
+                                </div>
+                                <div class="card-small">
+                                    <a href="https://dnd.kbots.tech/" target="_blank">
+                                      
+                                        <div class="work-content">Live Bot Link</div>
+                                    </a>
+                                </div>
+
+                            </div>
+
+                            <div>
+                                <div class="card">
+                                    <img class="work-img" src="./images/site-image.PNG">
+                                    <a href="https://repl.it/@mcurranseijo/DandD-Dashboard#index.html" target="_blank">
+                                     
+                                        <div class="work-content">Discord Bot Site<br>Code</div>
+                                    </a>
+                                </div>
+                                <div class="card-small">
+                                    <a href="https://dnd.kbots.tech" target="_blank">
+                                   
+                                        <div class="work-content">Live Site Link</div>
+                                    </a>
+
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="card">
+                                    <img class="work-img" src="./images/pizzabot.png">
+                                    <a href="https://github.com/mcurranseijo/pizzabot/" target="_blank">
+                                  
+                                        <div class="work-content">Domino's Discord Bot<br>Code</div>
+                                    </a>
+                                </div>
+                                <div class="card-small">
+                                    <a href="https://discord.com/oauth2/authorize?client_id=793630529857650719&permissions=10304&scope=bot"
+                                        target="_blank">
+                                
+                                        <div class="work-content">Live Bot Link</div>
+                                    </a>
+
+                                </div>
+                            </div>
+                        </div>
+                        <div class="work-box">
+                            <div class="work">
+                                <div class="card">
+                                    <img class="work-img" src="./images/hostsapling.png">
+                                    <a href="https://pypi.org/project/aiotriviapy/" target="_blank">
+                                  
+                                        <div class="work-content">AioTriviapy</div>
+                                    </a>
+                                </div>
+                                <div class="card">
+                                    <img class="work-img" src="./images/blackjack.png">
+                                    <a href="https://github.com/mcurranseijo/Java_BlackJack_Game" target="_blank">
+                               
+                                        <div class="work-content">Java Swing Blackjack Game</div>
+                                    </a>
+                                </div>
+                                <div class="card">
+                                    <img class="work-img" src="./images/friendo.jpg">
+                                    <a href="https://github.com/fisher60/Friendo_Bot" target="_blank">
+                           
+                                        <div class="work-content">Friendo bot contributor</div>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+
+       
+                    <div id="contact">
+              
+                        <h3>Contact
+                            <hr>
+                        </h3>
+                        <p>Below are the best places to get in touch or learn more about me</p>
+                        <div class="social-media">
+                            <a href="https://github.com/mcurranseijo" target="_blank"><i class='fab fa-github'></i></a>
+                            <a href="https://www.linkedin.com/in/mckeegan/" target="_blank"><i
+                                    class='fab fa-linkedin-in'></i></a>
+                            <a href="mailto:keegan@kbots.tech" target="_blank"><i
+                                    class='fa fa-envelope'></i></a>
+                        </div>
+                    </div>
+
+        </main>
+        <footer class="copyright">
+            Current as of October 2022
+        </footer>
+
+    </div>
+</body>
+
+</html>
